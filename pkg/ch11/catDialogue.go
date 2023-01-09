@@ -7,13 +7,24 @@ import (
 	"time"
 )
 
-func New() *e.Part {
-	part := &e.Part{}
+const (
+	Title = "Глава 11. Фрагмент про кота."
+)
+
+type LocPart struct {
+	e.Part
+}
+
+func New() *LocPart {
+	part := &LocPart{}
+	part.Name = Title
 	part.Character = make(map[string]*e.Character)
 	return part
 }
 
-func Tell(p *e.Part) {
+func (p *LocPart) Tell() {
+	p.Title()
+
 	ctx := context.Background()
 
 	mother := p.Instance(e.Character{
@@ -42,13 +53,12 @@ func Tell(p *e.Part) {
 		fritz.Like(greyCat)
 		rodent := make(chan *e.Character)
 		wg := sync.WaitGroup{}
-		ctxM, cancel := context.WithCancel(ctx)
+		ctxM, cancel := context.WithTimeout(ctx, time.Microsecond*500)
+		defer cancel()
 		p.FanIn(ctxM, &wg, rodent,
 			&e.Character{Name: "Мышильда", Type: "животное"},
 			&e.Character{Name: "Мышиный король", Type: "животное"})
 		p.FanOut(ctxM, &wg, rodent, greyCat)
-		<-time.After(time.Microsecond * 500)
-		cancel()
 		wg.Wait()
 
 	})
@@ -56,13 +66,13 @@ func Tell(p *e.Part) {
 	// -- мама --
 	//— Да, — прибавила мама, смеясь, — а заодно начнет прыгать по стульям, столам и перебьет всю посуду и чашки.
 	ctxM, cancelM := context.WithCancel(ctx)
+	defer cancelM()
 	wgM := sync.WaitGroup{}
 	mother.Say(ctx, func() {
 		mother.Dislike(p.Instance(e.Character{Name: "Кот"}))
 		cups := make(chan *e.Character)
 		p.FanIn(ctxM, &wgM, cups, &e.Character{Name: "Чашка"}, &e.Character{Name: "Тарелка"})
 		p.FanOut(ctxM, &wgM, cups, p.Instance(e.Character{Name: "Кот"}))
-		<-time.After(time.Microsecond * 500)
 	})
 
 	// -- Фриц --
@@ -83,9 +93,10 @@ func Tell(p *e.Part) {
 	})
 
 	louisa.Say(ctx, func() {
-		p.Destroy(p.Instance(e.Character{Name: "Мышь"}))
+		<-time.After(time.Microsecond * 500)
 		cancelM()
 		wgM.Wait()
+		p.Destroy(p.Instance(e.Character{Name: "Кот"}))
 	})
 
 	// -- советник --
@@ -95,25 +106,23 @@ func Tell(p *e.Part) {
 		Type:  "человек",
 		Alias: "Советник",
 	})
-	fatherAct4 := func() {
+	father.Say(ctx, func() {
 		father.Like(fritz)
 		if p.IsExist("Мышеловка") {
 			mousetrap := p.Instance(e.Character{Name: "Мышеловка"})
 			mice := make(chan *e.Character)
 			wg := sync.WaitGroup{}
-			ctxM, cancel := context.WithCancel(ctx)
+			ctxM, cancel := context.WithTimeout(ctx, time.Microsecond*500)
+			defer cancel()
 			p.FanIn(ctxM, &wg, mice, &e.Character{Name: "Мышь", Type: "животное"})
 			p.FanOut(ctxM, &wg, mice, mousetrap)
-			<-time.After(time.Microsecond * 500)
-			cancel()
 			wg.Wait()
 		}
-	}
-	father.Say(ctx, fatherAct4)
+	})
 
 	// -- Фриц --
 	// — Что за беда, если и нет, — закричал Фриц, — крестный тотчас сделает новую! Ведь он же их выдумал!
-	fritzAct5 := func() {
+	fritz.Say(ctx, func() {
 		if !p.IsExist("MouseTrap") {
 			drosselmeier := p.Instance(e.Character{
 				Name:  "Дроссельмейер",
@@ -124,45 +133,40 @@ func Tell(p *e.Part) {
 			drosselmeier.Like(mousetrap)
 			mice := make(chan *e.Character)
 			wg := sync.WaitGroup{}
-			ctxM, cancel := context.WithCancel(ctx)
+			ctxM, cancel := context.WithTimeout(ctx, time.Microsecond*500)
+			defer cancel()
 			p.FanIn(ctxM, &wg, mice, &e.Character{Name: "Мышь", Type: "животное"})
 			p.FanOut(ctxM, &wg, mice, mousetrap)
-			<-time.After(time.Microsecond * 500)
-			cancel()
 			wg.Wait()
 		}
-	}
-	fritz.Say(ctx, fritzAct5)
+	})
 
 	// -- советница --
 	// Все засмеялись, когда же советница сказала, что у них в самом деле нет мышеловок
-	motherAct6 := func() {
+	mother.Say(ctx, func() {
 		mother.Like(fritz)
 		father.Like(fritz)
 		p.Instance(e.Character{Name: "Мышеловка"}).Like(fritz)
 		louisa.Like(fritz)
 		p.Destroy(p.Instance(e.Character{Name: "Мышеловка"}))
 
-	}
-	mother.Say(ctx, motherAct6)
+	})
 
 	// -- крестный --
 	// крестный объявил, что у него в доме их много, и тотчас велел принести одну, отлично сделанную.
 	drosselmeier := p.Instance(e.Character{Name: "Дроссельмейер"})
-	drosselmeierAct7 := func() {
+	drosselmeier.Say(ctx, func() {
 		mousetrap := p.Instance(e.Character{
 			Name:     "Мышеловка",
 			Relative: []*e.Character{{Name: "Дом", Type: "строение"}},
 		})
 		mousetrapC := make(chan *e.Character)
 		wg := sync.WaitGroup{}
-		ctxM, cancel := context.WithCancel(ctx)
+		ctxM, cancel := context.WithTimeout(ctx, time.Microsecond*500)
+		defer cancel()
 		p.FanIn(ctxM, &wg, mousetrapC, mousetrap)
 		p.FanOut(ctxM, &wg, mousetrapC, mousetrap)
-		<-time.After(time.Microsecond * 500)
-		cancel()
 		wg.Wait()
 		drosselmeier.Like(mousetrap)
-	}
-	drosselmeier.Say(ctx, drosselmeierAct7)
+	})
 }

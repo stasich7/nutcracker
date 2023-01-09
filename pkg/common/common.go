@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -20,19 +21,33 @@ type Character struct {
 
 type Part struct {
 	mx        sync.Mutex
+	Name      string
 	Character map[string]*Character
 }
 
 type Story struct {
+	Name string
 	Part []*Part
 }
 
+type StoryTeller interface {
+	Tell()
+}
+
+func (s *Story) Tell(p StoryTeller) {
+	p.Tell()
+}
+
+func (p *Part) Title() {
+	fmt.Printf("\n\n%s %s %s\n\n", strings.Repeat("=", 10), p.Name, strings.Repeat("=", 10))
+}
+
 func (p *Part) FanIn(ctx context.Context, wg *sync.WaitGroup, ch chan<- *Character, things ...*Character) {
+	wg.Add(1)
 	go func(things []*Character, wg *sync.WaitGroup) {
 		fmt.Printf("--- Мысленно запущено ---\n")
 		defer wg.Done()
 		var iThings uint
-		wg.Add(1)
 		for {
 			select {
 			case <-ctx.Done():
@@ -49,12 +64,12 @@ func (p *Part) FanIn(ctx context.Context, wg *sync.WaitGroup, ch chan<- *Charact
 }
 
 func (p *Part) FanOut(ctx context.Context, wg *sync.WaitGroup, ch <-chan *Character, consumer *Character) {
+	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
 		defer func() {
 			wg.Done()
 			fmt.Printf("--- Мысленно остановлено ---\n")
 		}()
-		wg.Add(1)
 		for item := range ch {
 			p.Destroy(item, consumer)
 		}
